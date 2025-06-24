@@ -1,0 +1,264 @@
+---
+title: "EV Report"
+author: "Stefan Ofili"
+date: "2025-06-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(readr)
+library(tidyr) 
+
+
+EV_Data <- read_csv("EV_Data.csv")
+```
+
+# Fundamental EV Report 
+
+## Introduction
+This brief report presents key data and insights on the electric vehicle (EV) landscape in the United States from 2016 to 2023. It includes a series of visualizations supported by relevant observations, annotations, and contextual explanations where necessary. The report concludes with a set of actionable recommendations.
+
+For a deeper dive into consumer sentiment, political dynamics, and more detailed analysis, please refer to the accompanying Tableau dashboard and storyline.
+
+## Creation of complete data 
+It was noticed during data cleaning stage that some states had some missing observations within columns of data. A seperate data was created to include all observations with **only** complete data. 
+```{r complete_data}
+#Creating a separate temp. dataset for only complete data throughout the years. 
+
+incomplete_states <- EV_Data %>%
+  group_by(State) %>% 
+  filter(any(is.na(across(everything()))))  
+  
+complete_states <- na.omit(incomplete_states)
+
+
+any(is.na(complete_states))  # Result:[1] FALSE
+
+complete_states %>%
+  group_by(Year) %>% 
+  distinct(State) %>% 
+  count() 
+
+# Checking if there is indeed no complete data in 2019. 
+complete_states_2019 <- complete_states %>% 
+  filter(Year == 2019)
+```
+#### Observation
+There was null data in the following: fuel_economy, Incentives, Number of Metro Organizing Committees, affectweather, devharm, discuss, exp, localofficials personal , reducetax, gasoline_price_per_gallon, Total ,Trucks, Trucks_Share, Party. 
+
+This missing information could potentailly skew analysis, yet it was no used for data analysis for US trends between 2016- 2023, as this complete data set removed missing information in the year 2019. 
+
+#### Context
+In the years of 2019 to 2021 COVID-19 occurred and the effects lingered for years, effects that we still notice today. 
+
+## EV Registrations over time in the US 
+
+```{r ev_registration_trend}
+ev_registration_trend <- EV_Data %>%
+  group_by(Year) %>%
+  summarise(total_ev_registrations = sum(`EV Registrations`, na.rm = TRUE))
+
+ggplot(data = ev_registration_trend, aes(x = Year, y = total_ev_registrations)) +
+  geom_line(color = "darkgreen", size = 1.2) +
+  labs(
+    title = "Total EV Registrations Over Time in the U.S.",
+    x = "Year",
+    y = "Total EV Registrations"
+  ) +
+  scale_y_continuous(labels = comma)+ 
+  theme_minimal()
+```
+
+#### Observation
+EV cars have grown exponentially over the years, yet the rapid change can be seen from 2020. As of 2023, it was reported up to 1,256,600 registration as of 2023. With an average of 25,699 per year between 2016 and 2023. 
+
+#### Context
+There has been a surge in environmental consciousness in recent years, this could be a main factor in such a surge. There is also incentives offered by the government to make purchasing an EV more enticing. These factors will be back with actual analysis. 
+
+## EV Stations in the U.S over time
+```{r ev_station_trend}
+ev_station_trend <- EV_Data %>%
+  group_by(Year) %>%
+  summarise(total_ev_station = sum(`Stations`, na.rm = TRUE))
+
+ggplot(data = ev_station_trend, aes(x = Year, y = total_ev_station)) +
+  geom_line(color = "darkred", size = 1.2) +
+  labs(
+    title = "Total EV Stations Over Time in the U.S.",
+    x = "Year",
+    y = "Total EV Stations"
+  ) +
+  scale_y_continuous(labels = comma)+ 
+  theme_minimal()
+```
+
+#### Observation
+There was an rapid creation of EV stations to accommodate for the surge in EV usage. Also, there was a huge increase in 2020 and 2021. 
+
+#### Context
+The surge between 2020 and 2021 can be attributed to common factors such as policy shifts, economic recovery, consumer trends, and technological investment. 
+
+U.S. passed legislation and made executive orders under the Biden administration aiming to expand EV charging networks rapidly.
+
+Many government Set zero-emission vehicle (ZEV) targets and implemented incentive programs. 
+
+The lead-up to the COP26 Climate Conference in November 2021 pushed countries to make visible climate action commitments
+
+## Charging stations over time 
+```{r ev_station_charging_type_trend}
+ev_station_charging_type_trend <- complete_states %>%
+  group_by(Year) %>%
+  summarise(
+    `Total Level 1 Stations` = sum(`Level 1`, na.rm = TRUE), 
+    `Total Level 2 Stations` = sum(`Level 2`, na.rm = TRUE), 
+    `Total DC Fast Stations` = sum(`DC Fast`, na.rm = TRUE)
+    )%>%
+  pivot_longer(
+    cols = c(`Total Level 1 Stations`, `Total Level 2 Stations`, `Total DC Fast Stations`),
+    names_to = "Charging_Type",
+    values_to = "Station_Count"
+  )
+
+ggplot( data = ev_station_charging_type_trend, aes(x= Year, y= Station_Count, colour = Charging_Type))+
+  geom_point()+
+  geom_smooth( method = "loess", se= FALSE )+
+  
+labs(
+  title = "Charging Station Types Over Time in the U.S.",
+  x = "Year",
+  y = "Number of Stations",
+  colour = "Charging_Type"
+) +
+  scale_y_continuous(labels = comma)+ 
+  theme_minimal()
+```
+
+#### Observation
+
+Level 1 charging was used at a constat rate till a decline starting in 2021. Level 2 charging was widely adopted and is on an increasing trend. Lastly, DC fast charging stations are steadly being made across the country. 
+
+#### Context
+
+Level 1 charging is phasing out as a primary method due to slow speed and evolving user needs. Level 2 is now dominant, with widespread adoption and continued growth supported by infrastructure investment. DC Fast Charging is expanding gradually but strategically, essential for highway networks and rapid urban charging.
+
+
+## Total incentives granted over time in the U.S.
+```{r total_incentives_trend}
+total_incentives_trend <- EV_Data %>% 
+  group_by(Year) %>% 
+  summarise(`Total Incentives` =sum(`Incentives`, na.rm = TRUE))
+
+ggplot( data =total_incentives_trend, aes(x= Year, y= `Total Incentives`, colour = "orange" ))+
+  geom_point()+
+  geom_line( size = 1)+
+  labs(
+    title = "Total Incentives Granted From 2016 to 2023 in the U.S"
+  )+ 
+  theme_minimal()
+```
+
+#### Observation
+
+Starting with a slow growth, in 2020, there was a surge in inectives granted in the U.S 
+
+#### Context
+This was discussed earlier. Check "EV Stations in the U.S over time" section. 
+
+## Total Vehicles and EVs in the U.S from 2016 to 2023
+```{r total_EVs&vehicles}
+`total_EVs&vehicles` <- `EV_Data` %>% 
+  group_by(Year) %>% 
+  summarise( `Total Vehicles`= sum(`Total Vehicles`,na.rm = TRUE),
+             `Total EVs`= sum(`EV Registrations`,na.rm = TRUE)
+             )%>%
+  pivot_longer(
+    cols = c(`Total Vehicles`, `Total EVs`),
+    names_to = "Vehicle_Type",
+    values_to = "Count"
+  )
+
+ggplot( data = `total_EVs&vehicles`, aes(x= Year, y= Count, colour = Vehicle_Type ))+
+  geom_point() +
+  geom_line()+
+  scale_y_continuous(labels = comma)+
+  labs(
+    title = "Total Vehicles and EVs in the U.S from 2016 to 2023",
+     y = "Vehicle amount in units"
+  )
+  theme_minimal()
+```
+
+#### Observation
+
+EV's still have a long way to go till "replacing" traditional cars. With 1,256,600  EV's on the road between 2016 and 2023 compared with 36,850,300 traditional cars. 
+
+#### Context
+Pricing is a big factor in the amount of EVs on the road in the U.S. The average EV price in the U.S is $55,000 ( as of 2025) For many this is steep, yet in older years it was more expensive. It is slowly becoming cheaper. 
+
+## Median EV % share from 2016 to 2023
+```{r median_ev_share}
+median_ev_share <- `EV_Data` %>% 
+  group_by(Year) %>% 
+  summarise(`Median EV Share (%)`= median(`EV Share (%)`), na.rm = TRUE)
+
+
+ggplot( data =`median_ev_share`, aes(x= Year, y= `Median EV Share (%)`))+
+  geom_line()+
+  labs(
+    title = "Median EV Share (%) Over Time in the U.S.",
+    x = "Year",
+    y = "Median EV Share (%)"
+  )+
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1))+
+  theme_minimal()
+```
+
+#### Observation
+The median EV share (%) has increased rapidly to about 60% in 2023. As it was just less than 5% in 2016 and about 19% in 2020. 
+
+#### Context
+It can be attributed to early policy incentives, growing consumer interest, and the emergence of competitive EV models.
+
+## Distribution of EV share (%) in 2016 compared to 2023.
+```{r dsirtibution}
+EV_Data %>%
+  filter(Year == 2016) %>%
+  ggplot(aes(x = `EV Share (%)`)) +
+  geom_histogram(bins = 30, fill = "gold", color = "white") +
+  labs(title = "Distribution of EV Share (%) in 2016")
+
+EV_Data %>%
+  filter(Year == 2023) %>%
+  ggplot(aes(x = `EV Share (%)`)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  labs(title = "Distribution of EV Share (%) in 2023")
+
+```
+
+#### Observation
+This distribution highlights how rare EV were in 2016 in contrast to it being more common in 2023. 
+
+#### Context
+
+This was discussed earlier. Check "EV Stations in the U.S over time" section. 
+
+
+##Summary of EV Share (%) and a boxplot graph
+```{r EV_Share_summary}
+summary(EV_Data$`EV Share (%)`)
+boxplot(EV_Data$`EV Share (%)`)
+```
+
+#### Observation
+This shows the minimum, maximum, and average EV share between 2016 and 2023. 
+
+#Summary
+[Content goes here]
+
+#Links
+[Content goes here]
